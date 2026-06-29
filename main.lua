@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👑 TRUBL - Roblox ID Finder</title>
+    <style>
+        body {
+            background-color: #141414;
+            color: #f0f0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 10px;
+            border: 1px solid #d4af37;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h1 {
+            color: #d4af37;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        p {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            width: 90%;
+            padding: 12px;
+            background-color: #141414;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 15px;
+            outline: none;
+            transition: border 0.3s;
+        }
+        input[type="text"]:focus {
+            border: 1px solid #d4af37;
+        }
+        button {
+            width: 96%;
+            padding: 12px;
+            background-color: #141414;
+            color: #fff;
+            border: 1px solid #d4af37;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background-color: #d4af37;
+            color: #141414;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #282828;
+            border-radius: 6px;
+            display: none;
+            border: 1px solid #3c3c3c;
+        }
+        /* ✨ アバター画像用のスタイル */
+        .avatar-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid #d4af37;
+            background-color: #141414;
+            margin: 10px auto;
+            display: block;
+        }
+        .id-text {
+            font-size: 22px;
+            color: #d4af37;
+            font-weight: bold;
+            margin: 10px 0;
+            user-select: all;
+        }
+        .error {
+            color: #ff3333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>👑 ROBLOX ID FINDER</h1>
+    <p>ユーザー名（文字列）を入力すると、登録に必要な数字のIDを表示します。</p>
+    
+    <input type="text" id="username" placeholder="ユーザー名を入力..." autocomplete="off">
+    <button onclick="findRobloxId()">検索する</button>
+
+    <div id="resultBox" class="result-box">
+        <div id="avatarContainer"></div>
+        
+        <div id="resultTitle" style="font-size: 12px; color: #aaa; margin-top: 10px;">あなたの数字のID:</div>
+        <div id="idResult" class="id-text">--------</div>
+        <div style="font-size: 11px; color: #888;">上記をコピーして管理者に送ってください</div>
+    </div>
+</div>
+
+<script>
+async function findRobloxId() {
+    const username = document.getElementById('username').value.trim();
+    const resultBox = document.getElementById('resultBox');
+    const idResult = document.getElementById('idResult');
+    const resultTitle = document.getElementById('resultTitle');
+    const avatarContainer = document.getElementById('avatarContainer');
+
+    if (!username) {
+        alert('ユーザー名を入力してください。');
+        return;
+    }
+
+    avatarContainer.innerHTML = "";
+    idResult.innerText = "探索中...";
+    resultTitle.innerText = "ステータス:";
+    resultBox.style.display = "block";
+
+    try {
+        // 1. ユーザー名からUserId（数字）を取得
+        const userResponse = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://users.roblox.com/v1/usernames/users'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ "usernames": [username], "excludeBannedUsers": false })
+        });
+
+        const userData = await userResponse.json();
+
+        if (userData.data && userData.data.length > 0) {
+            const userId = userData.data[0].id;
+            const displayName = userData.data[0].displayName;
+
+            // 2. ✨ 【新機能】UserIdを使ってロクロックス公式のアイコン画像を取得
+            try {
+                const thumbUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=true`;
+                const thumbResponse = await fetch('https://corsproxy.io/?' + encodeURIComponent(thumbUrl));
+                const thumbData = await thumbResponse.json();
+                
+                if (thumbData.data && thumbData.data.length > 0) {
+                    const imgUrl = thumbData.data[0].imageUrl;
+                    avatarContainer.innerHTML = `<img src="${imgUrl}" class="avatar-img" alt="Roblox Avatar">`;
+                }
+            } catch (imgErr) {
+                console.error("アバター取得失敗:", imgErr);
+            }
+
+            resultTitle.innerText = `${displayName} さんの数字のID:`;
+            idResult.innerHTML = `<span class="id-text">${userId}</span>`;
+            idResult.className = "id-text";
+        } else {
+            resultTitle.innerText = "エラー:";
+            idResult.innerText = "ユーザーが見つかりません";
+            idResult.className = "id-text error";
+        }
+    } catch (error) {
+        resultTitle.innerText = "エラー:";
+        idResult.innerText = "通信に失敗しました";
+        idResult.className = "id-text error";
+        console.error(error);
+    }
+}
+</script>
+
+</body>
+</html>
