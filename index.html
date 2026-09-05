@@ -91,7 +91,6 @@
             margin: 10px 0;
             user-select: all;
         }
-        /* ✨ 新しいコピーボタンのスタイル */
         .copy-btn {
             width: 80%;
             padding: 8px;
@@ -134,7 +133,7 @@
 </div>
 
 <script>
-let currentUserId = ""; // コピー用にIDを一時保存する変数
+let currentUserId = "";
 
 async function findRobloxId() {
     const username = document.getElementById('username').value.trim();
@@ -153,14 +152,25 @@ async function findRobloxId() {
     idResult.innerText = "探索中...";
     resultTitle.innerText = "ステータス:";
     resultBox.style.display = "block";
-    copyBtn.style.display = "none"; // 検索中はコピーボタンを隠す
+    copyBtn.style.display = "none";
 
     try {
-        const userResponse = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://users.roblox.com/v1/usernames/users'), {
+        // 無料プロキシ（Thingproxy）を経由する構成へ変更
+        const targetApi = 'https://users.roblox.com/v1/usernames/users';
+        const proxyUrl = 'https://thingproxy.freeboard.io/fetch/' + targetApi;
+
+        const userResponse = await fetch(proxyUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
             body: JSON.stringify({ "usernames": [username], "excludeBannedUsers": false })
         });
+
+        if (!userResponse.ok) {
+            throw new Error(`HTTP Error: ${userResponse.status}`);
+        }
 
         const userData = await userResponse.json();
 
@@ -170,7 +180,9 @@ async function findRobloxId() {
 
             try {
                 const thumbUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${currentUserId}&size=150x150&format=Png&isCircular=true`;
-                const thumbResponse = await fetch('https://corsproxy.io/?' + encodeURIComponent(thumbUrl));
+                const thumbProxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(thumbUrl);
+                
+                const thumbResponse = await fetch(thumbProxy);
                 const thumbData = await thumbResponse.json();
                 
                 if (thumbData.data && thumbData.data.length > 0) {
@@ -184,7 +196,7 @@ async function findRobloxId() {
             resultTitle.innerText = `${displayName} さんの数字のID:`;
             idResult.innerHTML = `<span class="id-text">${currentUserId}</span>`;
             idResult.className = "id-text";
-            copyBtn.style.display = "inline-block"; // IDが見つかったらコピーボタンを表示
+            copyBtn.style.display = "inline-block";
         } else {
             resultTitle.innerText = "エラー:";
             idResult.innerText = "ユーザーが見つかりません";
@@ -193,25 +205,21 @@ async function findRobloxId() {
         }
     } catch (error) {
         resultTitle.innerText = "エラー:";
-        idResult.innerText = "通信に失敗しました";
+        idResult.innerText = "通信に失敗しました (403/Block)";
         idResult.className = "id-text error";
         copyBtn.style.display = "none";
         console.error(error);
     }
 }
 
-// ✨ 【新機能】クリップボードへのコピーと演出処理
 function copyToClipboard() {
     if (!currentUserId) return;
     
     navigator.clipboard.writeText(currentUserId).then(() => {
         const copyBtn = document.getElementById('copyBtn');
-        
-        // ボタンのデザインと文字を「成功状態」に変更
         copyBtn.innerText = "✅ コピーしました！";
         copyBtn.classList.add('success');
         
-        // 2秒後に元の状態に戻す
         setTimeout(() => {
             copyBtn.innerText = "📋 IDをコピーする";
             copyBtn.classList.remove('success');
