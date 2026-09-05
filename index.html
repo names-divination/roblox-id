@@ -133,6 +133,9 @@
 </div>
 
 <script>
+// ⚠️ ここに作成した Cloudflare Worker の URL を貼り付けてください（末尾の / は不要）
+const WORKER_URL = "https://userid.fuckingskid.workers.dev/";
+
 let currentUserId = "";
 
 async function findRobloxId() {
@@ -155,22 +158,12 @@ async function findRobloxId() {
     copyBtn.style.display = "none";
 
     try {
-        // 無料プロキシ（Thingproxy）を経由する構成へ変更
-        const targetApi = 'https://users.roblox.com/v1/usernames/users';
-        const proxyUrl = 'https://userid.fuckingskid.workers.dev/' + targetApi;
-
-        const userResponse = await fetch(proxyUrl, {
+        // 自前の Worker へ POST リクエストを送る
+        const userResponse = await fetch(`${WORKER_URL}/get-user`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ "usernames": [username], "excludeBannedUsers": false })
         });
-
-        if (!userResponse.ok) {
-            throw new Error(`HTTP Error: ${userResponse.status}`);
-        }
 
         const userData = await userResponse.json();
 
@@ -179,10 +172,8 @@ async function findRobloxId() {
             const displayName = userData.data[0].displayName;
 
             try {
-                const thumbUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${currentUserId}&size=150x150&format=Png&isCircular=true`;
-                const thumbProxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(thumbUrl);
-                
-                const thumbResponse = await fetch(thumbProxy);
+                // 自前の Worker へ アバター画像のリクエストを送る
+                const thumbResponse = await fetch(`${WORKER_URL}/get-avatar?userId=${currentUserId}`);
                 const thumbData = await thumbResponse.json();
                 
                 if (thumbData.data && thumbData.data.length > 0) {
@@ -205,7 +196,7 @@ async function findRobloxId() {
         }
     } catch (error) {
         resultTitle.innerText = "エラー:";
-        idResult.innerText = "通信に失敗しました (403/Block)";
+        idResult.innerText = "通信に失敗しました";
         idResult.className = "id-text error";
         copyBtn.style.display = "none";
         console.error(error);
